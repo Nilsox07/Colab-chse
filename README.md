@@ -57,9 +57,11 @@ Technik:
 - [ ] `config.local.php` mit echten Werten, neues DB-Passwort, neues `setup_token`
 - [ ] Installation ausgefuehrt, Admin-Login funktioniert
 - [ ] `install.php` entfernt/gesperrt
-- [ ] `app/config.php`: `base_url`, ggf. `pretty_urls` und `.htaccess` fuer sprechende URLs
-- [ ] HTTPS erzwungen, Cache-/Kompression-Header gesetzt
-- [ ] `sitemap.php` und `robots.txt` erreichbar, `admin/`/`app/` gesperrt
+- [ ] `.htaccess` liegt im Web-Root (erzwingt HTTPS, Verzeichnisschutz, Caching);
+      `app/.htaccess` sperrt das Applikationsverzeichnis
+- [ ] optional sprechende URLs: `'pretty_urls' => true` unter `app` in `config.local.php`
+      (nur mit mod_rewrite; ohne bleibt `/index.php?route=...` aktiv und funktioniert)
+- [ ] `sitemap.php` und `robots.txt` erreichbar
 
 Inhalt und Recht (im Admin editierbar):
 
