@@ -11,7 +11,7 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_csrf();
     if (!$tokenOk) {
-        $error = 'Setup-Token ist ungueltig.';
+        $error = 'Setup-Token ist ungültig.';
     } elseif (!$configured) {
         $error = 'Datenbankdaten fehlen in app/config.local.php.';
     } else {
@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email = trim((string) ($_POST['email'] ?? ''));
             $password = (string) ($_POST['password'] ?? '');
             if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 12) {
-                $error = 'Bitte gueltige E-Mail und ein Admin-Passwort mit mindestens 12 Zeichen angeben.';
+                $error = 'Bitte gültige E-Mail und ein Admin-Passwort mit mindestens 12 Zeichen angeben.';
             } else {
                 create_admin_if_missing($email, $password);
                 audit_log('install', 'schema');
@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p class="err">Datenbank ist noch nicht konfiguriert. Lege <code>app/config.local.php</code> anhand der Beispieldatei an.</p>
     <?php endif; ?>
     <?php if (!$tokenOk): ?>
-        <p class="err">Oeffne diese Seite mit gueltigem Setup-Token: <code>/install.php?token=...</code></p>
+        <p class="err">Öffne diese Seite mit gültigem Setup-Token: <code>/install.php?token=...</code></p>
     <?php endif; ?>
     <?php if ($message): ?><p class="ok"><?= e($message) ?></p><?php endif; ?>
     <?php if ($error): ?><p class="err"><?= e($error) ?></p><?php endif; ?>
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <label>Admin Passwort <input type="password" name="password" required minlength="12"></label>
         <button type="submit">Installieren / migrieren</button>
     </form>
-    <p class="note">Nach erfolgreicher Installation sollte das Setup-Token geaendert oder die Datei per FTP entfernt werden.</p>
+    <p class="note">Nach erfolgreicher Installation sollte das Setup-Token geändert oder die Datei per FTP entfernt werden.</p>
 </main>
 </body>
 </html>

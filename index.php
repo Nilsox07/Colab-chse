@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'contact
             ]);
             $_SESSION['flash_success'] = 'Danke. Deine Anfrage wurde gespeichert.';
         } else {
-            $_SESSION['flash_error'] = 'Bitte Name, gueltige E-Mail, Nachricht und Datenschutz-Hinweis ausfuellen.';
+            $_SESSION['flash_error'] = 'Bitte Name, gültige E-Mail, Nachricht und Datenschutz-Hinweis ausfüllen.';
         }
     }
     redirect(route_url('kontakt') . '#kontaktformular');
@@ -142,7 +142,7 @@ function site_header(): void
             <span class="brand-mark">UP</span>
             <span><?= e(setting('site_name', 'Unternehmenspflichten.de')) ?></span>
         </a>
-        <button class="nav-toggle" data-nav-toggle aria-expanded="false">Menue</button>
+        <button class="nav-toggle" data-nav-toggle aria-expanded="false">Menü</button>
         <nav class="site-nav" data-nav>
             <?php foreach (nav_pages() as $nav): ?>
                 <a href="<?= e(route_url($nav['slug'])) ?>"><?= e($nav['nav_label']) ?></a>
@@ -287,7 +287,7 @@ function render_module_overview(): void
         echo '<span class="status">' . e(status_label($module['status'])) . '</span>';
         echo '<h2>' . e($module['title']) . '</h2>';
         echo '<p>' . e($module['summary']) . '</p>';
-        echo '<a href="' . e(route_url('modul/' . $module['slug'])) . '">Modulseite oeffnen</a>';
+        echo '<a href="' . e(route_url('modul/' . $module['slug'])) . '">Modulseite öffnen</a>';
         echo '</article>';
     }
     echo '</div>';
@@ -431,7 +431,7 @@ function render_contact_form(): void
     <label>Firma <input name="company" autocomplete="organization"></label>
     <label>E-Mail <input name="email" type="email" required autocomplete="email"></label>
     <label>Telefon <input name="phone" autocomplete="tel"></label>
-    <label>Thema <select name="topic"><option>Pruef-/Fristen-Tracker</option><option>Produkt-/Haendler-Nachweisakte</option><option>Beraterzugang</option><option>Sonstiges</option></select></label>
+    <label>Thema <select name="topic"><option>Prüf-/Fristen-Tracker</option><option>Produkt-/Händler-Nachweisakte</option><option>Beraterzugang</option><option>Sonstiges</option></select></label>
     <label>Nachricht <textarea name="message" rows="6" required></textarea></label>
     <label class="hp">Website <input name="website" tabindex="-1" autocomplete="off"></label>
     <label class="check"><input type="checkbox" name="consent" value="1" required> Ich bin einverstanden, dass meine Angaben zur Bearbeitung der Anfrage gespeichert werden.</label>
@@ -459,7 +459,7 @@ function render_404(): never
     ];
     html_head($page);
     site_header();
-    echo '<main id="inhalt"><section class="page-hero"><div class="wrap narrow"><h1>Seite nicht gefunden</h1><p class="lead">Zurueck zur Startseite oder zu den Modulen.</p><a class="button" href="' . e(route_url('home')) . '">Startseite</a></div></section></main>';
+    echo '<main id="inhalt"><section class="page-hero"><div class="wrap narrow"><h1>Seite nicht gefunden</h1><p class="lead">Zurück zur Startseite oder zu den Leistungen.</p><a class="button" href="' . e(route_url('home')) . '">Startseite</a></div></section></main>';
     site_footer();
     exit;
 }

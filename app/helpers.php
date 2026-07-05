@@ -76,7 +76,7 @@ function require_csrf(): void
     $token = (string) ($_POST['csrf_token'] ?? '');
     if ($token === '' || !hash_equals((string) ($_SESSION['csrf_token'] ?? ''), $token)) {
         http_response_code(400);
-        exit('Ungueltige Formularanfrage.');
+        exit('Ungültige Formularanfrage.');
     }
 }
 
@@ -298,7 +298,7 @@ function status_label(string $status): string
 {
     return match ($status) {
         'start' => 'Startmodul',
-        'next' => 'Naechster Ausbau',
+        'next' => 'Nächster Ausbau',
         'partner' => 'Partner-/Beraterthema',
         'roadmap' => 'Roadmap',
         default => 'Modul',
