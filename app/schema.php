@@ -1,0 +1,258 @@
+<?php
+declare(strict_types=1);
+
+function create_schema(): void
+{
+    $pdo = db();
+    $pdo->exec("CREATE TABLE IF NOT EXISTS admins (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(190) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(50) NOT NULL DEFAULT 'owner',
+        failed_logins INT NOT NULL DEFAULT 0,
+        locked_until DATETIME NULL,
+        last_login_at DATETIME NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS pages (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        slug VARCHAR(190) NOT NULL UNIQUE,
+        nav_label VARCHAR(190) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        hero_title VARCHAR(255) NOT NULL,
+        hero_subtitle TEXT NULL,
+        cta_label VARCHAR(190) NULL,
+        cta_url VARCHAR(255) NULL,
+        body_html MEDIUMTEXT NULL,
+        meta_title VARCHAR(255) NULL,
+        meta_description TEXT NULL,
+        og_title VARCHAR(255) NULL,
+        og_description TEXT NULL,
+        og_image VARCHAR(255) NULL,
+        canonical VARCHAR(255) NULL,
+        json_ld MEDIUMTEXT NULL,
+        noindex TINYINT(1) NOT NULL DEFAULT 0,
+        is_published TINYINT(1) NOT NULL DEFAULT 1,
+        show_in_nav TINYINT(1) NOT NULL DEFAULT 1,
+        sort_order INT NOT NULL DEFAULT 100,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS modules (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        slug VARCHAR(190) NOT NULL UNIQUE,
+        category VARCHAR(120) NOT NULL,
+        status VARCHAR(40) NOT NULL DEFAULT 'roadmap',
+        title VARCHAR(255) NOT NULL,
+        headline VARCHAR(255) NOT NULL,
+        summary TEXT NOT NULL,
+        audience TEXT NULL,
+        includes_text TEXT NULL,
+        boundary_text TEXT NULL,
+        cta_label VARCHAR(190) NULL,
+        cta_url VARCHAR(255) NULL,
+        source_label VARCHAR(255) NULL,
+        source_url VARCHAR(255) NULL,
+        is_featured TINYINT(1) NOT NULL DEFAULT 0,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        sort_order INT NOT NULL DEFAULT 100,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS faqs (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        owner_type VARCHAR(40) NOT NULL DEFAULT 'global',
+        owner_slug VARCHAR(190) NOT NULL DEFAULT '',
+        question VARCHAR(255) NOT NULL,
+        answer TEXT NOT NULL,
+        sort_order INT NOT NULL DEFAULT 100,
+        is_active TINYINT(1) NOT NULL DEFAULT 1
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS settings (
+        setting_key VARCHAR(190) PRIMARY KEY,
+        setting_value MEDIUMTEXT NULL,
+        label VARCHAR(190) NOT NULL,
+        group_name VARCHAR(80) NOT NULL DEFAULT 'general',
+        field_type VARCHAR(40) NOT NULL DEFAULT 'text'
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS design_tokens (
+        token_key VARCHAR(120) PRIMARY KEY,
+        token_value VARCHAR(255) NOT NULL,
+        label VARCHAR(190) NOT NULL,
+        field_type VARCHAR(40) NOT NULL DEFAULT 'text'
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS leads (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(190) NOT NULL,
+        company VARCHAR(190) NULL,
+        email VARCHAR(190) NOT NULL,
+        phone VARCHAR(80) NULL,
+        topic VARCHAR(190) NULL,
+        message TEXT NOT NULL,
+        consent TINYINT(1) NOT NULL DEFAULT 0,
+        status VARCHAR(40) NOT NULL DEFAULT 'new',
+        notes TEXT NULL,
+        ip_hash VARCHAR(64) NULL,
+        user_agent VARCHAR(255) NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS audit_logs (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        admin_id INT UNSIGNED NULL,
+        action VARCHAR(190) NOT NULL,
+        target VARCHAR(190) NULL,
+        meta_json TEXT NULL,
+        ip_hash VARCHAR(64) NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX (created_at),
+        INDEX (admin_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
+function seed_defaults(): void
+{
+    seed_settings();
+    seed_design();
+    seed_pages();
+    seed_modules();
+    seed_faqs();
+}
+
+function upsert_setting(string $key, string $value, string $label, string $group = 'general', string $type = 'text'): void
+{
+    $stmt = db()->prepare('INSERT INTO settings (setting_key, setting_value, label, group_name, field_type)
+        VALUES (?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE label = VALUES(label), group_name = VALUES(group_name), field_type = VALUES(field_type)');
+    $stmt->execute([$key, $value, $label, $group, $type]);
+}
+
+function upsert_design(string $key, string $value, string $label, string $type = 'text'): void
+{
+    $stmt = db()->prepare('INSERT INTO design_tokens (token_key, token_value, label, field_type)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE label = VALUES(label), field_type = VALUES(field_type)');
+    $stmt->execute([$key, $value, $label, $type]);
+}
+
+function seed_settings(): void
+{
+    upsert_setting('site_name', 'Unternehmenspflichten.de', 'Seitentitel');
+    upsert_setting('site_claim', 'Fristen, Pruefungen und Nachweise fuer Betriebe zentral verwalten.', 'Hauptclaim', 'content', 'textarea');
+    upsert_setting('site_subclaim', 'Ablage, Erinnerungen, Portalbelege und Exportordner fuer wiederkehrende Unternehmenspflichten.', 'Unterzeile', 'content', 'textarea');
+    upsert_setting('primary_cta_label', 'Demo anfragen', 'Primaerer Button', 'content');
+    upsert_setting('primary_cta_url', '/kontakt', 'Primaerer Button-Link', 'content');
+    upsert_setting('secondary_cta_label', 'Module ansehen', 'Sekundaerer Button', 'content');
+    upsert_setting('secondary_cta_url', '/module', 'Sekundaerer Button-Link', 'content');
+    upsert_setting('hero_eyebrow', 'Nachweise statt Rechtsurteil', 'Hero Eyebrow', 'content');
+    upsert_setting('home_modules_heading', 'Zwei Startkeile, nicht hundert halbe Module', 'Startseite: Modul-Ueberschrift', 'content');
+    upsert_setting('home_modules_intro', 'Der Launch fokussiert auf Pruef-/Fristen-Tracker und Produkt-/Haendler-Nachweisakte. Weitere Themen bleiben Roadmap und koennen spaeter aktiviert werden.', 'Startseite: Modul-Einleitung', 'content', 'textarea');
+    upsert_setting('home_modules_eyebrow', 'Startfokus', 'Startseite: Modul-Eyebrow', 'content');
+    upsert_setting('home_process_heading', 'Der Ablauf bleibt bewusst einfach', 'Startseite: Ablauf-Ueberschrift', 'content');
+    upsert_setting('home_process_eyebrow', 'Ablauf', 'Startseite: Ablauf-Eyebrow', 'content');
+    upsert_setting('home_step_1_title', 'Frist oder Objekt anlegen', 'Startseite: Schritt 1 Titel', 'content');
+    upsert_setting('home_step_1_text', 'Betrieb, Berater oder Fachkraft legt an, was beobachtet werden soll.', 'Startseite: Schritt 1 Text', 'content', 'textarea');
+    upsert_setting('home_step_2_title', 'Belege sichern', 'Startseite: Schritt 2 Titel', 'content');
+    upsert_setting('home_step_2_text', 'Quittungen, Fotos, Protokolle, Portalbelege und Bescheide werden abgelegt.', 'Startseite: Schritt 2 Text', 'content', 'textarea');
+    upsert_setting('home_step_3_title', 'Export erstellen', 'Startseite: Schritt 3 Titel', 'content');
+    upsert_setting('home_step_3_text', 'Nachweisordner fuer Steuerberater, Pruefer, Sifa, Auftraggeber oder interne Kontrolle.', 'Startseite: Schritt 3 Text', 'content', 'textarea');
+    upsert_setting('home_trust_heading', 'Keine Rechtsberatung. Saubere Nachweisarbeit.', 'Startseite: Vertrauens-Ueberschrift', 'content');
+    upsert_setting('home_trust_eyebrow', 'Grenze', 'Startseite: Vertrauens-Eyebrow', 'content');
+    upsert_setting('faq_eyebrow', 'FAQ', 'FAQ Eyebrow', 'content');
+    upsert_setting('faq_heading', 'Haeufige Fragen', 'FAQ Ueberschrift', 'content');
+    upsert_setting('legal_boundary', 'Die fachliche Bewertung bleibt beim Betrieb und seinen Beratern. Die Plattform verwaltet Fristen, Dokumente, Belege und Exporte.', 'Rechtsgrenze', 'content', 'textarea');
+    upsert_setting('contact_email', 'kontakt@unternehmenspflichten.de', 'Kontakt E-Mail', 'contact');
+    upsert_setting('contact_phone', '', 'Telefon', 'contact');
+    upsert_setting('company_name', 'Unternehmenspflichten.de', 'Betreibername', 'legal');
+    upsert_setting('company_address', 'Bitte im Admin ersetzen', 'Anschrift', 'legal', 'textarea');
+    upsert_setting('pricing_note', 'Startpakete werden individuell nach Nutzerzahl, Standorten und Nachweisumfang eingerichtet.', 'Preishinweis', 'content', 'textarea');
+}
+
+function seed_design(): void
+{
+    upsert_design('color-bg', '#f6f7f4', 'Hintergrund', 'color');
+    upsert_design('color-surface', '#ffffff', 'Flaeche', 'color');
+    upsert_design('color-text', '#17211d', 'Text', 'color');
+    upsert_design('color-muted', '#5b6762', 'Sekundaertext', 'color');
+    upsert_design('color-primary', '#0f5b55', 'Primaerfarbe', 'color');
+    upsert_design('color-primary-strong', '#0a413d', 'Primaer dunkel', 'color');
+    upsert_design('color-secondary', '#275f8f', 'Info-Blau', 'color');
+    upsert_design('color-accent', '#c47a1b', 'Fristen-Akzent', 'color');
+    upsert_design('color-danger', '#a63a2b', 'Ueberfaellig', 'color');
+    upsert_design('color-success', '#2f7d4f', 'Erledigt', 'color');
+    upsert_design('font-head', 'Inter, Arial, sans-serif', 'Schrift Ueberschriften');
+    upsert_design('font-body', 'Inter, Arial, sans-serif', 'Schrift Text');
+    upsert_design('base-font-size', '16px', 'Basis-Schriftgroesse');
+    upsert_design('radius', '8px', 'Eckenradius');
+    upsert_design('max-width', '1180px', 'Maximale Breite');
+}
+
+function seed_pages(): void
+{
+    $pages = [
+        ['home', 'Start', 'Fristen, Pruefungen und Nachweise fuer Betriebe', setting('site_claim', ''), setting('site_subclaim', ''), 'Demo anfragen', '/kontakt', '<h2>Worum es geht</h2><p>Unternehmenspflichten.de ist als schlanke Nachweisplattform fuer Betriebe geplant: Fristen eintragen, Unterlagen ablegen, Portalbelege sichern und Exportordner fuer Steuerberater, Pruefer, Sifa oder Auftraggeber erstellen.</p><p>Die Plattform ersetzt keine fachliche Beratung. Sie hilft beim Verwalten, Erinnern und Wiederfinden.</p>', 'Unternehmenspflichten, Fristen und Nachweise zentral verwalten', 'Fristen, Pruefungen, Portalbelege und Nachweisordner fuer Betriebe zentral verwalten.', 1, 1],
+        ['module', 'Module', 'Module fuer Fristen, Pruefungen und Nachweise', 'Start mit zwei klaren Keilen', 'Pruef-/Fristen-Tracker und Produkt-/Haendler-Nachweisakte bilden den Start. Weitere Bereiche bleiben Roadmap.', 'Kontakt aufnehmen', '/kontakt', '<p>Alle Module sind ueberschreibbar: Texte, Quellen, Status, Reihenfolge und Call-to-Actions koennen im Admin angepasst werden.</p>', 'Module fuer Unternehmenspflichten und Nachweise', 'Startmodule und Roadmap fuer Unternehmenspflichten.de.', 2, 1],
+        ['berater', 'Berater', 'Beraterzugang fuer Steuerberater, Sifa und Dienstleister', 'Mandantenunterlagen schneller bekommen', 'Steuerberater, Lohnbueros, Sifa, Pruefer und Fachberater sollen Nachweise strukturieren, anfordern und exportieren koennen.', 'Beraterzugang anfragen', '/kontakt', '<p>Der Beraterzugang ist als Vertriebskanal und Produktnutzen gedacht: Mandanten liefern Belege, Verantwortliche sehen offene Punkte, Exporte werden sauber vorbereitet.</p>', 'Beraterzugang fuer Unternehmenspflichten.de', 'Mandantenunterlagen, Fristen und Belege fuer Steuerberater, Lohnbueros und Sifa strukturieren.', 3, 1],
+        ['preise', 'Preise', 'Pakete fuer Betriebe und Berater', 'Ein Abo um Fristen, Belege und Exporte', 'Preise skalieren nach Nutzern, Standorten, Objekten, Produkten und Beraterzugang.', 'Angebot anfragen', '/kontakt', '<h2>Startlogik</h2><p>Basis fuer kleine Betriebe, Pro fuer mehrere Standorte oder viele Produkte, Beraterpakete fuer Mandantenverwaltung. Finale Preise koennen im Admin ersetzt werden.</p>', 'Preise fuer Unternehmenspflichten.de', 'Pakete fuer Betriebe, Produktanbieter und Berater.', 4, 1],
+        ['kontakt', 'Kontakt', 'Demo oder Startpaket anfragen', 'Lass uns den ersten Nachweisordner sauber aufsetzen', 'Beschreibe kurz Betrieb, Branche und welches Fristen- oder Produktnachweisproblem zuerst geloest werden soll.', 'Nachricht senden', '#kontaktformular', '<p>Kontaktanfragen werden in der Datenbank gespeichert und koennen im Admin bearbeitet werden. SMTP kann spaeter ergaenzt werden.</p>', 'Kontakt zu Unternehmenspflichten.de', 'Demo, Startpaket oder Beraterzugang fuer Unternehmenspflichten.de anfragen.', 5, 1],
+        ['impressum', 'Impressum', 'Impressum', 'Angaben gemaess DDG', 'Diese Angaben sind Platzhalter und muessen vor dem Live-Betrieb im Admin ersetzt werden.', null, null, '<p><strong>Betreiber:</strong> Bitte im Admin ersetzen</p><p><strong>Anschrift:</strong> Bitte im Admin ersetzen</p><p><strong>E-Mail:</strong> kontakt@unternehmenspflichten.de</p>', 'Impressum', 'Impressum von Unternehmenspflichten.de.', 90, 0],
+        ['datenschutz', 'Datenschutz', 'Datenschutzerklaerung', 'Datenschutz und Kontaktanfragen', 'Diese Datenschutzerklaerung ist ein editierbarer Starttext und muss vor dem Live-Betrieb final geprueft werden.', null, null, '<h2>Kontaktformular</h2><p>Wenn Sie das Kontaktformular nutzen, speichern wir Ihre Angaben zur Bearbeitung der Anfrage.</p><h2>Server-Logs</h2><p>Der Hostinganbieter kann technische Zugriffsdaten verarbeiten. Details muessen nach Hosting-Konfiguration ergaenzt werden.</p><h2>Keine Rechtsberatung</h2><p>Die Plattform dient der Organisation von Fristen, Dokumenten und Nachweisen.</p>', 'Datenschutz', 'Datenschutzhinweise fuer Unternehmenspflichten.de.', 91, 0],
+    ];
+
+    $stmt = db()->prepare('INSERT INTO pages (slug, nav_label, title, hero_title, hero_subtitle, cta_label, cta_url, body_html, meta_title, meta_description, sort_order, show_in_nav)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE nav_label = VALUES(nav_label), sort_order = VALUES(sort_order), show_in_nav = VALUES(show_in_nav)');
+    foreach ($pages as $p) {
+        $stmt->execute($p);
+    }
+}
+
+function seed_modules(): void
+{
+    $modules = [
+        ['prueffristen-tracker', 'Pruef- und Betreiberfristen', 'start', 'Pruef-/Fristen-Tracker', 'Wiederkehrende Pruefungen und Nachweise an einem Ort', 'DGUV-nahe Pruefungen, Feuerloescher, Leitern, Unterweisungen, Gebaeude- und Betreiberfristen werden als Fristen und Nachweisordner verwaltet.', 'Betriebe mit Arbeitsmitteln, Standorten, Unterweisungen, Wartungen und Pruefbelegen.', 'Fristen, Verantwortliche, Dokumente, Portalbelege, Exportordner, Status offen/faellig/erledigt.', 'Keine Entscheidung, welche Pruefung gesetzlich im Einzelfall erforderlich ist. Nutzer oder Fachpartner legen Inhalte und Fristen fest.', 'Demo anfragen', '/kontakt', 'DGUV', 'https://www.dguv.de/', 1, 1, 10],
+        ['produkt-haendler-nachweisakte', 'Produkte und Handel', 'start', 'Produkt-/Haendler-Nachweisakte', 'Produktunterlagen, Registrierungen und Quellen je SKU ablegen', 'Fuer Haendler, Importeure und Marken: VerpackG/LUCID, GPSR, WEEE, Batterie, BFSG, Lieferantenunterlagen und Rueckrufordner als Nachweisakte.', 'Onlinehaendler, Importeure, D2C-Marken, Produktmanager, Agenturen und Berater.', 'Produktakte, Quellen, Registrierungsbelege, Lieferantennachweise, Rueckruf-/Marktueberwachungsordner.', 'Keine automatische Produktbewertung und keine Produktkonformitaetsfreigabe.', 'Produktakte anfragen', '/kontakt', 'EU Product Safety', 'https://commission.europa.eu/business-economy-euro/product-safety-and-requirements/product-safety_en', 1, 1, 20],
+        ['steuer-register-fristen', 'Steuern und Register', 'next', 'Steuer-/Registerfristen', 'Offenlegung, E-Rechnung, TSE und Belege fuer Steuerberater', 'Jahresabschluss- und Offenlegungsakte, E-Rechnung, TSE/GoBD-Belege und Portalquittungen als strukturierter Arbeitsordner.', 'GmbH, UG, Steuerberater, Lohnbueros, Buchhaltung und Finance-Teams.', 'Fristen, Belege, Einreichungsquittungen, Steuerberaterexport, Jahresordner.', 'Keine Steuerberatung, keine Abschlussfreigabe und keine automatische Einreichung.', 'Startpaket besprechen', '/kontakt', 'Unternehmensregister', 'https://www.unternehmensregister.de/', 0, 1, 30],
+        ['beraterzugang', 'Berater', 'next', 'Beraterzugang', 'Mandantenbelege anfordern, pruefen und exportieren', 'Steuerberater, Lohnbueros, Sifa, Pruefer und Fachberater erhalten eine strukturierte Sicht auf Mandanten, offene Nachweise und Exportordner.', 'Berater, Pruefer, Dienstleister und Kanzleien mit wiederkehrenden Mandantenunterlagen.', 'Mandantenliste, Aufgaben, Belege, Export, Status, Notizen.', 'Keine fachliche Beratung durch die Plattform; Berater pruefen selbst.', 'Beraterzugang anfragen', '/kontakt', 'DSGVO Art. 28', 'https://gdpr-info.eu/art-28-gdpr/', 1, 1, 40],
+        ['bfsg-barrierefreiheit', 'Produkte und Handel', 'next', 'BFSG-Barrierefreiheitsakte', 'Shop- und Produktnachweise fuer Barrierefreiheit dokumentieren', 'BFSG wird als Quellen-, Aufgaben- und Nachweisakte gefuehrt: Testergebnisse, Screenshots, Issues, Verlauf und Beraterfreigaben.', 'Online-Shops, Agenturen, SaaS-Anbieter, Produktanbieter mit Verbraucherbezug.', 'Quellen, Tests, Issues, Screenshots, Status, Export.', 'Keine automatische BFSG-Einordnung und keine fachliche Freigabe der Barrierefreiheit.', 'BFSG-Modul vormerken', '/kontakt', 'Bundesfachstelle BFSG', 'https://www.bundesfachstelle-barrierefreiheit.de/DE/Barrierefreiheitsstaerkungsgesetz/FAQ/faq_node', 0, 1, 50],
+        ['hinweisgeber-meldestelle', 'Arbeitgeber', 'partner', 'Hinweisgeber-Nachweisakte', 'Meldestellen-Unterlagen und Fristen strukturiert ablegen', 'HinSchG-nahe Unterlagen, Rollen, Anbieter, Fristen und Belege werden verwaltet. Die eigentliche Meldestelle kann ein Partner stellen.', 'Arbeitgeber ab relevanter Groesse, HR, Compliance, externe Meldestellenanbieter.', 'Rollen, Anbieter, Fristen, Richtlinien, Nachweise, Export.', 'Keine Rechtsberatung und keine eigene Meldestellenleistung im MVP.', 'Partnerloesung anfragen', '/kontakt', 'HinSchG', 'https://www.gesetze-im-internet.de/hinschg/BJNR08C0B0023.html', 0, 1, 60],
+    ];
+
+    $stmt = db()->prepare('INSERT INTO modules (slug, category, status, title, headline, summary, audience, includes_text, boundary_text, cta_label, cta_url, source_label, source_url, is_featured, is_active, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE category = VALUES(category), status = VALUES(status), sort_order = VALUES(sort_order)');
+    foreach ($modules as $m) {
+        $stmt->execute($m);
+    }
+}
+
+function seed_faqs(): void
+{
+    $faqs = [
+        ['global', '', 'Ist das Rechtsberatung?', 'Nein. Die Plattform verwaltet Fristen, Dokumente, Quellen, Portalbelege und Exporte. Fachliche oder rechtliche Bewertungen bleiben beim Betrieb und seinen Beratern.', 10],
+        ['global', '', 'Kann ich Texte und Module spaeter ueberschreiben?', 'Ja. Seiten, Module, SEO-Daten, Quellen, Designwerte, Kontakt- und Rechtstexte sind im Admin editierbar.', 20],
+        ['global', '', 'Was ist der wichtigste Nutzen?', 'Nicht das einmalige Lesen einer Pflicht, sondern das Wiederfinden von Nachweisen und das Erinnern an wiederkehrende Fristen.', 30],
+    ];
+    $stmt = db()->prepare('INSERT INTO faqs (owner_type, owner_slug, question, answer, sort_order)
+        SELECT ?, ?, ?, ?, ? FROM DUAL
+        WHERE NOT EXISTS (SELECT 1 FROM faqs WHERE owner_type = ? AND owner_slug = ? AND question = ?)');
+    foreach ($faqs as $f) {
+        $stmt->execute([$f[0], $f[1], $f[2], $f[3], $f[4], $f[0], $f[1], $f[2]]);
+    }
+}
+
+function create_admin_if_missing(string $email, string $password): void
+{
+    $count = (int) db()->query('SELECT COUNT(*) FROM admins')->fetchColumn();
+    if ($count > 0) {
+        return;
+    }
+    $stmt = db()->prepare('INSERT INTO admins (email, password_hash, role, created_at) VALUES (?, ?, "owner", NOW())');
+    $stmt->execute([$email, password_hash($password, PASSWORD_DEFAULT)]);
+}
