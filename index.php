@@ -190,6 +190,7 @@ function render_page(array $page): void
             <div class="wrap narrow prose">
                 <?= sanitize_html((string) $page['body_html']) ?>
                 <?php if ($page['slug'] === 'module'): render_module_overview(); endif; ?>
+                <?php if ($page['slug'] === 'ratgeber'): render_ratgeber_overview(); endif; ?>
                 <?php if ($page['slug'] === 'kontakt'): render_contact_form(); endif; ?>
             </div>
         </section>
@@ -277,6 +278,25 @@ function render_module_overview(): void
         echo '<h2>' . e($module['title']) . '</h2>';
         echo '<p>' . e($module['summary']) . '</p>';
         echo '<a href="' . e(route_url('modul/' . $module['slug'])) . '">Modulseite oeffnen</a>';
+        echo '</article>';
+    }
+    echo '</div>';
+}
+
+function render_ratgeber_overview(): void
+{
+    // Landingpages nutzen als Konvention sort_order >= 200 und erscheinen so
+    // automatisch im Ratgeber-Hub (interne Verlinkung fuer SEO und Besucher).
+    $pages = db()->query('SELECT slug, hero_title, hero_subtitle FROM pages WHERE is_published = 1 AND sort_order >= 200 ORDER BY sort_order ASC')->fetchAll();
+    if (!$pages) {
+        return;
+    }
+    echo '<div class="module-list">';
+    foreach ($pages as $p) {
+        echo '<article class="module-card wide">';
+        echo '<h2>' . e($p['hero_title']) . '</h2>';
+        echo '<p>' . e($p['hero_subtitle']) . '</p>';
+        echo '<a href="' . e(route_url($p['slug'])) . '">Zum Ratgeber</a>';
         echo '</article>';
     }
     echo '</div>';
