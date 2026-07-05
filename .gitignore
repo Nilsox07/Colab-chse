@@ -1,0 +1,12 @@
+# Lokale Konfiguration mit Zugangsdaten NIEMALS committen
+app/config.local.php
+
+# Uploads / private Medien (spaeter)
+/storage/
+/uploads/
+
+# Build-/System-Artefakte
+.DS_Store
+Thumbs.db
+*.log
+*.cache
