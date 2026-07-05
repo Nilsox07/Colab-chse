@@ -1,0 +1,17 @@
+{
+  "functions": {
+    "index.php": { "runtime": "vercel-php@0.9.0" },
+    "sitemap.php": { "runtime": "vercel-php@0.9.0" },
+    "install.php": { "runtime": "vercel-php@0.9.0" },
+    "admin/index.php": { "runtime": "vercel-php@0.9.0" }
+  },
+  "routes": [
+    { "src": "/app/(.*)", "status": 404 },
+    { "src": "/(.*\\.md)", "status": 404 },
+    { "handle": "filesystem" },
+    { "src": "/sitemap.php", "dest": "/sitemap.php" },
+    { "src": "/install.php", "dest": "/install.php" },
+    { "src": "/admin(/.*)?", "dest": "/admin/index.php" },
+    { "src": "/(.*)", "dest": "/index.php" }
+  ]
+}

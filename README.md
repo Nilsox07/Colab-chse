@@ -56,6 +56,12 @@ Datei-Uploads sind nicht persistent. Fuer den Live-Betrieb mit Datenbank und Adm
 ist klassisches PHP-Hosting vorgesehen (siehe Go-Live-Checkliste). Interne Links
 laufen ueber `?route=` und funktionieren auch ohne mod_rewrite.
 
+Die mitgelieferte `vercel.json` aktiviert das PHP-Runtime (`vercel-php`), liefert
+statische Dateien direkt aus und leitet Seitenaufrufe an `index.php`. Ohne diese
+Datei wuerde Vercel `index.php` nur als Download ausliefern. Im Vercel-Projekt als
+Framework-Preset "Other" (ohne Build-Command) belassen. `.htaccess` wird auf Vercel
+ignoriert; der Schutz von `app/` erfolgt dort ueber `vercel.json`.
+
 ## Sicherheit (wichtig vor Go-Live)
 
 - **Zugangsdaten rotieren:** In einer frueheren Repo-Version lagen echte DB-Zugangsdaten
