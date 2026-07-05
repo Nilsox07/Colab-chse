@@ -110,14 +110,73 @@ function json_encode_pretty(mixed $value): string
     return json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '{}';
 }
 
+function content_defaults(): array
+{
+    static $data = null;
+    if ($data === null) {
+        $data = require APP_DIR . '/content_defaults.php';
+    }
+    return $data;
+}
+
+/**
+ * Ist eine eingerichtete Datenbank erreichbar? Wenn nicht, laeuft die Seite im
+ * Vorschau-/Demo-Modus und liefert die Standard-Inhalte aus content_defaults.php.
+ */
+function db_ready(): bool
+{
+    static $ready = null;
+    if ($ready !== null) {
+        return $ready;
+    }
+    try {
+        $ready = table_exists('pages') && table_exists('modules');
+    } catch (Throwable) {
+        $ready = false;
+    }
+    return $ready;
+}
+
+function fallback_page(array $t): array
+{
+    return [
+        'id' => 0,
+        'slug' => $t[0], 'nav_label' => $t[1], 'title' => $t[2],
+        'hero_title' => $t[3], 'hero_subtitle' => $t[4],
+        'cta_label' => $t[5], 'cta_url' => $t[6], 'body_html' => $t[7],
+        'meta_title' => $t[8], 'meta_description' => $t[9],
+        'sort_order' => (int) $t[10], 'show_in_nav' => (int) $t[11],
+        'og_title' => '', 'og_description' => '', 'og_image' => '',
+        'canonical' => '', 'json_ld' => '', 'noindex' => 0, 'is_published' => 1,
+        'updated_at' => '2026-07-01 00:00:00',
+    ];
+}
+
+function fallback_module(array $t): array
+{
+    return [
+        'id' => 0,
+        'slug' => $t[0], 'category' => $t[1], 'status' => $t[2], 'title' => $t[3],
+        'headline' => $t[4], 'summary' => $t[5], 'audience' => $t[6], 'includes_text' => $t[7],
+        'boundary_text' => $t[8], 'cta_label' => $t[9], 'cta_url' => $t[10],
+        'source_label' => $t[11], 'source_url' => $t[12],
+        'is_featured' => (int) $t[13], 'is_active' => (int) $t[14], 'sort_order' => (int) $t[15],
+        'updated_at' => '2026-07-01 00:00:00',
+    ];
+}
+
 function setting(string $key, mixed $default = ''): mixed
 {
     static $cache = null;
     if ($cache === null) {
         $cache = [];
-        if (table_exists('settings')) {
+        if (db_ready()) {
             foreach (db()->query('SELECT setting_key, setting_value FROM settings') as $row) {
                 $cache[$row['setting_key']] = $row['setting_value'];
+            }
+        } else {
+            foreach (content_defaults()['settings'] as $k => $s) {
+                $cache[$k] = $s[0];
             }
         }
     }
@@ -131,9 +190,13 @@ function design_tokens(): array
         return $tokens;
     }
     $tokens = [];
-    if (table_exists('design_tokens')) {
+    if (db_ready()) {
         foreach (db()->query('SELECT token_key, token_value FROM design_tokens') as $row) {
             $tokens[$row['token_key']] = $row['token_value'];
+        }
+    } else {
+        foreach (content_defaults()['design'] as $k => $d) {
+            $tokens[$k] = $d[0];
         }
     }
     return $tokens;
@@ -177,7 +240,12 @@ function audit_log(string $action, string $target = '', array $meta = []): void
 
 function page_by_slug(string $slug): ?array
 {
-    if (!table_exists('pages')) {
+    if (!db_ready()) {
+        foreach (content_defaults()['pages'] as $p) {
+            if ($p[0] === $slug) {
+                return fallback_page($p);
+            }
+        }
         return null;
     }
     $stmt = db()->prepare('SELECT * FROM pages WHERE slug = ? AND is_published = 1 LIMIT 1');
@@ -188,7 +256,12 @@ function page_by_slug(string $slug): ?array
 
 function module_by_slug(string $slug): ?array
 {
-    if (!table_exists('modules')) {
+    if (!db_ready()) {
+        foreach (content_defaults()['modules'] as $m) {
+            if ($m[0] === $slug && (int) $m[14] === 1) {
+                return fallback_module($m);
+            }
+        }
         return null;
     }
     $stmt = db()->prepare('SELECT * FROM modules WHERE slug = ? AND is_active = 1 LIMIT 1');
@@ -199,8 +272,19 @@ function module_by_slug(string $slug): ?array
 
 function all_modules(bool $featuredOnly = false): array
 {
-    if (!table_exists('modules')) {
-        return [];
+    if (!db_ready()) {
+        $out = [];
+        foreach (content_defaults()['modules'] as $m) {
+            if ((int) $m[14] !== 1) {
+                continue;
+            }
+            if ($featuredOnly && (int) $m[13] !== 1) {
+                continue;
+            }
+            $out[] = fallback_module($m);
+        }
+        usort($out, static fn(array $a, array $b): int => $a['sort_order'] <=> $b['sort_order']);
+        return $out;
     }
     $sql = 'SELECT * FROM modules WHERE is_active = 1';
     if ($featuredOnly) {

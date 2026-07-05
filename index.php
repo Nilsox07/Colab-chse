@@ -2,19 +2,17 @@
 declare(strict_types=1);
 require __DIR__ . '/app/bootstrap.php';
 
-try {
-    $ready = table_exists('pages') && table_exists('modules');
-} catch (Throwable) {
-    $ready = false;
-}
-
-if (!$ready) {
-    http_response_code(503);
-    echo '<!doctype html><html lang="de"><meta charset="utf-8"><title>Setup erforderlich</title><body style="font-family:Arial,sans-serif;padding:40px;max-width:780px"><h1>Setup erforderlich</h1><p>Die Datenbank ist noch nicht eingerichtet. Bitte <a href="/install.php">Installationsroutine starten</a>.</p></body></html>';
-    exit;
+// Ohne eingerichtete Datenbank laeuft die Seite im Vorschau-/Demo-Modus und
+// rendert die Standard-Inhalte aus app/content_defaults.php.
+if (!db_ready()) {
+    define('UP_DEMO', true);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form'] ?? '') === 'contact') {
+    if (defined('UP_DEMO')) {
+        // Vorschau ohne Datenbank: nichts speichern, einfach zurueck.
+        redirect(route_url('kontakt') . '#kontaktformular');
+    }
     require_csrf();
     $trap = trim((string) ($_POST['website'] ?? ''));
     if ($trap === '') {
@@ -72,6 +70,16 @@ render_page($page);
 
 function nav_pages(): array
 {
+    if (!db_ready()) {
+        $out = [];
+        foreach (content_defaults()['pages'] as $p) {
+            if ((int) $p[11] === 1) {
+                $out[] = ['slug' => $p[0], 'nav_label' => $p[1], 'sort_order' => (int) $p[10]];
+            }
+        }
+        usort($out, static fn(array $a, array $b): int => $a['sort_order'] <=> $b['sort_order']);
+        return $out;
+    }
     return db()->query('SELECT slug, nav_label FROM pages WHERE is_published = 1 AND show_in_nav = 1 ORDER BY sort_order ASC, nav_label ASC')->fetchAll();
 }
 
@@ -125,7 +133,9 @@ function html_head(array $page, string $type = 'page'): void
 
 function site_header(): void
 {
-    ?>
+    if (defined('UP_DEMO')): ?>
+<div style="background:#0a413d;color:#fff;text-align:center;padding:8px 16px;font-size:14px;line-height:1.4">Vorschau-Modus ohne Datenbank &middot; Design-Ansicht, Formulare werden nicht gespeichert</div>
+    <?php endif; ?>
 <header class="site-header">
     <div class="wrap header-inner">
         <a class="brand" href="<?= e(route_url('home')) ?>" aria-label="Startseite">
@@ -287,7 +297,16 @@ function render_ratgeber_overview(): void
 {
     // Landingpages nutzen als Konvention sort_order >= 200 und erscheinen so
     // automatisch im Ratgeber-Hub (interne Verlinkung fuer SEO und Besucher).
-    $pages = db()->query('SELECT slug, hero_title, hero_subtitle FROM pages WHERE is_published = 1 AND sort_order >= 200 ORDER BY sort_order ASC')->fetchAll();
+    if (!db_ready()) {
+        $pages = [];
+        foreach (content_defaults()['pages'] as $p) {
+            if ((int) $p[10] >= 200) {
+                $pages[] = ['slug' => $p[0], 'hero_title' => $p[3], 'hero_subtitle' => $p[4]];
+            }
+        }
+    } else {
+        $pages = db()->query('SELECT slug, hero_title, hero_subtitle FROM pages WHERE is_published = 1 AND sort_order >= 200 ORDER BY sort_order ASC')->fetchAll();
+    }
     if (!$pages) {
         return;
     }
@@ -361,9 +380,20 @@ function render_module(array $module): void
 
 function render_faqs(string $ownerType, string $ownerSlug): void
 {
-    $stmt = db()->prepare('SELECT question, answer FROM faqs WHERE is_active = 1 AND ((owner_type = ? AND owner_slug = ?) OR (owner_type = "global" AND owner_slug = "")) ORDER BY sort_order ASC');
-    $stmt->execute([$ownerType, $ownerSlug]);
-    $faqs = $stmt->fetchAll();
+    if (!db_ready()) {
+        $faqs = [];
+        foreach (content_defaults()['faqs'] as $f) {
+            $isGlobal = $f[0] === 'global' && $f[1] === '';
+            $isOwner = $f[0] === $ownerType && $f[1] === $ownerSlug;
+            if ($isGlobal || $isOwner) {
+                $faqs[] = ['question' => $f[2], 'answer' => $f[3]];
+            }
+        }
+    } else {
+        $stmt = db()->prepare('SELECT question, answer FROM faqs WHERE is_active = 1 AND ((owner_type = ? AND owner_slug = ?) OR (owner_type = "global" AND owner_slug = "")) ORDER BY sort_order ASC');
+        $stmt->execute([$ownerType, $ownerSlug]);
+        $faqs = $stmt->fetchAll();
+    }
     if (!$faqs) {
         return;
     }
@@ -391,6 +421,7 @@ function render_contact_form(): void
     $error = $_SESSION['flash_error'] ?? '';
     unset($_SESSION['flash_success'], $_SESSION['flash_error']);
     ?>
+<?php if (defined('UP_DEMO')): ?><p class="form-message">Vorschau-Modus: Ohne Datenbank werden Anfragen nicht gespeichert.</p><?php endif; ?>
 <form class="contact-form" id="kontaktformular" method="post" action="<?= e(route_url('kontakt')) ?>">
     <?= csrf_field() ?>
     <input type="hidden" name="form" value="contact">

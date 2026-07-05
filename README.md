@@ -40,6 +40,22 @@ Fristen, die fachliche Bewertung bleibt bei Betrieb und Beratern (RDG-Grenze).
    mindestens 12 Zeichen vergeben. Die Routine legt Tabellen an und seedet Inhalte.
 4. Admin unter `/admin/` erreichbar.
 
+## Vorschau-/Demo-Modus ohne Datenbank
+
+Ist keine Datenbank erreichbar (z. B. bei einem Vercel-Deployment ohne MySQL),
+faellt die Seite automatisch in einen Vorschau-Modus: Alle oeffentlichen Seiten,
+Module und Ratgeber rendern das volle Design aus `app/content_defaults.php`
+(gemeinsame Quelle mit dem DB-Seed). Ein dezentes Banner weist darauf hin, und das
+Kontaktformular speichert nichts. Sobald eine echte Datenbank angebunden und per
+`install.php` eingerichtet ist, uebernimmt automatisch der Datenbankinhalt – ohne
+Code-Aenderung. Der Admin-Bereich braucht eine Datenbank und ist im Vorschau-Modus
+nicht nutzbar.
+
+Hinweis Vercel: PHP ist dort nur ueber ein Community-Runtime moeglich, Sessions und
+Datei-Uploads sind nicht persistent. Fuer den Live-Betrieb mit Datenbank und Admin
+ist klassisches PHP-Hosting vorgesehen (siehe Go-Live-Checkliste). Interne Links
+laufen ueber `?route=` und funktionieren auch ohne mod_rewrite.
+
 ## Sicherheit (wichtig vor Go-Live)
 
 - **Zugangsdaten rotieren:** In einer frueheren Repo-Version lagen echte DB-Zugangsdaten
